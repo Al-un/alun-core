@@ -5,6 +5,7 @@ services:
   # https://hub.docker.com/layers/mongo/library/mongo/4.2.5-bionic/images/sha256-e02955d5aad655bff95edfd8860add767a75a760d7952966cbd3a01202684e95?context=explore
   mongo-database:
     image: mongo:4.2.5-bionic
+    container_name: database
     # Database does not expose any port
     # https://docs.docker.com/compose/compose-file/#expose
     expose:
@@ -20,16 +21,18 @@ services:
       alun:
         aliases:
           - mongo-database
-  api-monolith:
+
+  api:
+    container_name: api
     build:
-      context: .
-      dockerfile: ./api-monolith.Dockerfile
+      context: ./../alun-api
+      dockerfile: api-monolith.Dockerfile
     ports:
       - "8000:8000"
     # Specify local .env file to avoid committing secret
     # https://docs.docker.com/compose/compose-file/#env_file
     env_file:
-      - ./.env.docker
+      - ./../alun-api/.env.docker
     # Those variables are compose-dependent so they must be defined here
     environment:
       ALUN_SERVER_MONOLITHIC_PORT: 8000
@@ -39,9 +42,23 @@ services:
     networks:
       alun:
         aliases:
-          - api-monolith
+          - api
     depends_on:
       - mongo-database
+
+  frontend-app:
+    container_name: app
+    build:
+      context: ./../alun-app
+      dockerfile: Dockerfile
+    ports:
+      - "8080:3000"
+    networks:
+      alun:
+        aliases:
+          - app
+    depends_on:
+      - api
 
 volumes:
   db-data:
