@@ -1,3 +1,7 @@
+#
+#   sudo docker-compose -f docker-compose.monolith.yml up --build
+#
+
 version: "3"
 
 services:
@@ -15,10 +19,10 @@ services:
       MONGO_INITDB_ROOT_USERNAME: pouet
       MONGO_INITDB_ROOT_PASSWORD: pouet
       MONGO_INITDB_DATABASE: alun
-    # volumes:
-    #   db-data:
+    volumes:
+      - alun-db-data:/data/db
     networks:
-      alun:
+      alun-nw:
         aliases:
           - mongo-database
 
@@ -40,7 +44,7 @@ services:
       ALUN_USER_DATABASE_URL: mongodb://pouet:pouet@mongo-database:27017/alun
       ALUN_MEMO_DATABASE_URL: mongodb://pouet:pouet@mongo-database:27017/alun
     networks:
-      alun:
+      alun-nw:
         aliases:
           - api
     depends_on:
@@ -61,10 +65,10 @@ services:
       - api
 
 volumes:
-  db-data:
+  alun-db-data:
 
 networks:
-  alun:
+  alun-nw:
     ipam:
       driver: default
       config:
