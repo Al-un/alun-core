@@ -1,0 +1,116 @@
+# Running
+#   Docker          19.03.08  build afacb8b7f0
+#   docker-compose  1.25.3    build d4d1b42b
+version: "3.7"
+
+# Swarm init
+#   sudo docker swarm init
+# If connected in both Ethernet and Wi-Fi:
+#   sudo docker swarm init --advertise-addr <IP Address>
+
+services:
+  alun_api:
+    # Image definition
+    # build:
+    #   context: https://github.com/Al-un/alun-api.git
+    #   dockerfile: api-monolith.Dockerfile
+    # image: alunsng/alun:digitalocean_api
+    image: alunsng/alun-api:latest
+    expose:
+      - "8000"
+    # Container characteristics
+    container_name: alun_api
+    restart: always
+    labels:
+      - "traefik.http.routers.alun-api.rule=Host(`api.al-un.fr`)"
+      - "traefik.http.routers.alun-api.entrypoints=https"
+      - "traefik.http.routers.alun-api.tls=true"
+      - "traefik.http.services.alun-api.loadbalancer.server.port=8000"
+    # deploy:
+    #   replicas: 1
+    #   labels:
+    #     - "traefik.http.routers.alun-api.rule=Host(`api.al-un.fr`)"
+    #     - "traefik.http.services.alun-api.loadbalancer.server.port=8000"
+    # App configuration
+    env_file:
+      - ./secrets/.env.api
+    environment:
+      ALUN_SERVER_MONOLITHIC_PORT: "8000"
+    # Networking
+    networks:
+      alun-nw:
+
+  alun_app:
+    # Image definition
+    # build:
+    #   context: https://github.com/Al-un/alun-app.git
+    #   # context: ../alun-app
+    #   dockerfile: Dockerfile
+    # image: alunsng/alun:digitalocean_app
+    image: alunsng/alun-app:latest
+    expose:
+      - "3000"
+    # Container characteristics
+    container_name: alun_app
+    restart: always
+    labels:
+      - "traefik.http.routers.alun-app.rule=Host(`app.al-un.fr`)"
+      - "traefik.http.routers.alun-app.entrypoints=https"
+      - "traefik.http.routers.alun-app.tls=true"
+      - "traefik.http.services.alun-app.loadbalancer.server.port=3000"
+    # deploy:
+    #   replicas: 1
+    #   labels:
+    #     - "traefik.http.routers.alun-app.rule=Host(`app.al-un.fr`)"
+    #     - "traefik.http.services.alun-app.loadbalancer.server.port=3000"
+    # Configuration
+    # environment:
+    #   - HOST=0.0.0.0
+    #   - PORT=4000
+    #   - ALUN_APP_BASE_URL=https://app.al-un.fr
+    #   - ALUN_API_URL_USER=https://api.al-un.fr/users
+    # Networking
+    networks:
+      alun-nw:
+
+  alun_reverse-proxy:
+    # Image definition
+    image: traefik:v2.1
+    # Container characteristics
+    container_name: alun_reverse-proxy
+    command:
+      # https://docs.traefik.io/v2.0/user-guides/docker-compose/basic-example/
+      - "--api.insecure=true"
+      # - "--log.level=DEBUG"
+      - "--log.level=INFO"
+      - "--providers.docker=true"
+      - "--providers.file.directory=/etc/traefik/dynamic_conf"
+      - "--entryPoints.http.address=:80"
+      - "--entryPoints.https.address=:443"
+    restart: always
+    depends_on:
+      - alun_api
+      - alun_app
+    # deploy:
+    #   replicas: 1
+    #   # https://docs.traefik.io/v2.0/providers/docker/#docker-api-access_1
+    #   placement:
+    #     constraints:
+    #       - node.role == manager
+    # Networking
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    networks:
+      alun-nw:
+    # Storage
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik.yml:/etc/traefik/dynamic_conf/traefik.yml:ro
+      - ./secrets/alun.csr:/etc/traefik/certs/alun.csr:ro
+      - ./secrets/alun.key:/etc/traefik/certs/alun.key:ro
+      - ./secrets/alun.pem:/etc/traefik/certs/alun.crt:ro
+
+networks:
+  alun-nw:

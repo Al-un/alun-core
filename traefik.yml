@@ -1,0 +1,4 @@
+tls:
+  certificates:
+    - certFile: /etc/traefik/certs/alun.crt
+      keyFile: /etc/traefik/certs/alun.key
